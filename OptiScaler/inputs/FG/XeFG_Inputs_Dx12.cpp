@@ -152,27 +152,27 @@ bool XeFG_Inputs_Dx12::TagFrameResource(void* swapChainContext, void* cmdList, u
     }
 
     // Map XeFG resource types to OptiScaler FG resource types
-    FG_ResourceType optiType = FG_ResourceType::Color;
+    FG_ResourceType optiType = HudlessColor;  // Default to HudlessColor
     
     switch (resData->type)
     {
     case XEFG_SWAPCHAIN_RES_HUDLESS_COLOR:
-        optiType = FG_ResourceType::HudlessColor;
+        optiType = HudlessColor;
         break;
     case XEFG_SWAPCHAIN_RES_DEPTH:
-        optiType = FG_ResourceType::Depth;
+        optiType = Depth;
         break;
     case XEFG_SWAPCHAIN_RES_MOTION_VECTOR:
-        optiType = FG_ResourceType::Velocity;
+        optiType = Velocity;
         break;
     case XEFG_SWAPCHAIN_RES_UI:
-        optiType = FG_ResourceType::UIColor;
+        optiType = UIColor;
         break;
     case XEFG_SWAPCHAIN_RES_BACKBUFFER:
-        optiType = FG_ResourceType::Color;
+        optiType = HudlessColor;  // Backbuffer maps to HudlessColor
         break;
     default:
-        LOG_WARN("Unknown XeFG resource type: {}", resData->type);
+        LOG_WARN("Unknown XeFG resource type: {}", static_cast<int>(resData->type));
         return true;
     }
 
