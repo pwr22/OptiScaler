@@ -164,3 +164,45 @@ When XeFG games become available:
 **Last Updated:** 2026-02-07
 **Status:** ✅ READY FOR COMPILATION
 **Branch:** copilot/add-xess-frame-generation-support
+
+---
+
+## Build Error Fixes (2026-02-07 20:50)
+
+### Fixed Compilation Errors
+
+**Error 1: 'Color' undeclared identifier**
+- **Cause:** FG_ResourceType is NOT a scoped enum
+- **Fix:** Removed `FG_ResourceType::` prefix, changed `Color` → `HudlessColor`
+- **Locations:** Lines 155, 172
+
+**Error 2: Cannot format enum type**
+- **Cause:** No std::formatter for `xefg_swapchain_resource_type_t`
+- **Fix:** Cast to int: `static_cast<int>(resData->type)`
+- **Location:** Line 175
+
+### Corrected Resource Mapping
+
+```cpp
+// FG_ResourceType enum (NOT scoped):
+enum FG_ResourceType : uint32_t {
+    Depth = 0,
+    Velocity,
+    HudlessColor,
+    UIColor,
+    Distortion,
+    ResourceTypeCOUNT
+};
+
+// Correct usage (no FG_ResourceType:: prefix):
+FG_ResourceType optiType = HudlessColor;  // ✓
+optiType = Depth;                         // ✓
+optiType = Velocity;                      // ✓
+```
+
+See `BUILD_FIXES_SUMMARY.md` for detailed information.
+
+---
+
+**Updated:** 2026-02-07 20:52
+**Status:** ✅ BUILD ERRORS FIXED - READY TO COMPILE
