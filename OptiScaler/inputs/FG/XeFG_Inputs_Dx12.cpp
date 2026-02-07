@@ -95,21 +95,19 @@ bool XeFG_Inputs_Dx12::TagFrameConstants(void* swapChainContext, uint32_t presen
     if (config->FGAsync.value_or_default())
         fgConstants.flags |= FG_Flags::Async;
 
+    // Set jitter offsets (note: XeFG uses jitterOffsetX/Y, not jitterX/Y)
+    fgOutput->SetJitter(constData->jitterOffsetX, constData->jitterOffsetY);
+
+    // Set motion vector scale
+    fgOutput->SetMVScale(constData->motionVectorScaleX, constData->motionVectorScaleY);
+
     // XeFG provides matrices instead of camera parameters
     // We could extract near/far/FOV from the projection matrix, but for simplicity
-    // we'll leave them as defaults (0) and let the FG output handle it
-    fgConstants.cameraNear = 0.0f;
-    fgConstants.cameraFar = 0.0f;
-    fgConstants.cameraFovAngleVertical = 0.0f;
+    // we'll set defaults and let the FG output handle it
+    // If needed, camera extraction from projection matrix could be added later
+    fgOutput->SetCameraValues(0.1f, 1000.0f, 1.0471975511966f, 16.0f / 9.0f, 1.0f);
 
-    // Jitter offsets (note: XeFG uses jitterOffsetX/Y, not jitterX/Y)
-    fgConstants.jitterX = constData->jitterOffsetX;
-    fgConstants.jitterY = constData->jitterOffsetY;
-
-    // Motion vector scale
-    fgConstants.mvScaleX = constData->motionVectorScaleX;
-    fgConstants.mvScaleY = constData->motionVectorScaleY;
-
+    // Evaluate state with the constants
     fgOutput->EvaluateState(State::Instance().currentD3D12Device, fgConstants);
 
     if (!config->FGEnabled.value_or_default())
