@@ -85,6 +85,8 @@ bool Config::Reload(std::filesystem::path iniPath)
                     FGInput.set_from_config(FGInput::FSRFG);
                 else if (lstrcmpiA(FGInputString.value().c_str(), "fsrfg30") == 0)
                     FGInput.set_from_config(FGInput::FSRFG30);
+                else if (lstrcmpiA(FGInputString.value().c_str(), "xefg") == 0)
+                    FGInput.set_from_config(FGInput::XeFG);
             }
 
             if (auto FGOutputString = readString("FrameGen", "FGOutput");
@@ -727,6 +729,8 @@ bool Config::SaveIni()
                 FGInputString = "FSRFG";
             else if (FGInputHeld.value() == FGInput::FSRFG30)
                 FGInputString = "FSRFG30";
+            else if (FGInputHeld.value() == FGInput::XeFG)
+                FGInputString = "XeFG";
         }
         ini.SetValue("FrameGen", "FGInput", FGInputString.c_str());
 

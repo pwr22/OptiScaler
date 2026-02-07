@@ -3011,7 +3011,7 @@ bool MenuCommon::RenderMenu()
                     "Limited to FSR3-FG\n\nSupports Hudless out of the box\n\nUses Streamline swapchain for pacing", 
                     "Can be used with any FG Output\n\nSupports Hudless out of the box", 
                     "Can be used with any FG Output\n\nSupports Hudless out of the box\n\nLimited to games that use Streamline v2", 
-                    "Support not implemented", 
+                    "Can be used with XeFG Output\n\nSupports Hudless out of the box", 
                     "Upscaler must be enabled\n\nCan be used with any FG Output, but might be imperfect with some\n\nTo prevent UI glitching, HUDfix required",
                     "Can be used with any FG Output\n\nSupports Hudless out of the box", 
                 };
@@ -3020,7 +3020,7 @@ bool MenuCommon::RenderMenu()
                     false, 
                     false, 
                     false, // TODO: Disable DLSSG inputs in games that can't support it
-                    true, 
+                    false, 
                     false,
                     false,
                 };
@@ -3091,6 +3091,14 @@ bool MenuCommon::RenderMenu()
                 {
                     disabledMaskInput[fsrfg30InputIndex] = true;
                     fgInputDesc[fsrfg30InputIndex] = "Unsupported API";
+                }
+
+                // XeFG inputs requirements
+                auto constexpr xefgInputIndex = (uint32_t) FGInput::XeFG;
+                if (State::Instance().swapchainApi != API::DX12)
+                {
+                    disabledMaskInput[xefgInputIndex] = true;
+                    fgInputDesc[xefgInputIndex] = "Unsupported API";
                 }
 
                 constexpr auto fgInputOptionsCount = sizeof(fgInputOptions) / sizeof(char*);
@@ -3224,7 +3232,7 @@ bool MenuCommon::RenderMenu()
                     }
 
                     if (state.activeFgInput == FGInput::DLSSG || state.activeFgInput == FGInput::FSRFG ||
-                        state.activeFgInput == FGInput::FSRFG30)
+                        state.activeFgInput == FGInput::FSRFG30 || state.activeFgInput == FGInput::XeFG)
                     {
                         ImGui::Spacing();
 
