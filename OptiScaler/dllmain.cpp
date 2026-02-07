@@ -26,6 +26,12 @@
 #include "inputs/FSR3_Dx12.h"
 #include "inputs/FG/FSR3_Dx12_FG.h"
 
+// XeFG input hooks
+namespace XeFGHooks
+{
+bool InstallHooks();
+}
+
 #include "fsr4/FSR4Upgrade.h"
 #include <fsr4/FSR4ModelSelection.h>
 
@@ -1928,6 +1934,11 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
         {
             FSR3FG::HookFSR3FGInputs();
             FSR3FG::HookFSR3FGExeInputs();
+        }
+
+        if (State::Instance().activeFgInput == FGInput::XeFG)
+        {
+            XeFGHooks::InstallHooks();
         }
 
         for (size_t i = 0; i < 300; i++)

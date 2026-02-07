@@ -4,6 +4,7 @@
 #include "Util.h"
 #include "Config.h"
 #include "Logger.h"
+#include "State.h"
 
 #include <proxies/Ntdll_Proxy.h>
 #include <proxies/KernelBase_Proxy.h>
@@ -13,6 +14,13 @@
 #include <xefg_swapchain_debug.h>
 
 #pragma comment(lib, "Version.lib")
+
+// Forward declarations for hooks
+xess_result_t hk_xefgSwapChainTagFrameConstants(xefg_swapchain_handle_t swapChainContext, uint64_t frameId,
+                                                  const xefg_swapchain_frame_constants_t* constants);
+xess_result_t hk_xefgSwapChainD3D12TagFrameResource(xefg_swapchain_handle_t swapChainContext, ID3D12CommandList* pCommandList,
+                                                      uint64_t frameId, const xefg_swapchain_d3d12_resource_data_t* resourceData);
+xess_result_t hk_xefgSwapChainSetPresentId(xefg_swapchain_handle_t swapChainContext, uint64_t presentId);
 
 // Common
 typedef decltype(&xefgSwapChainGetVersion) PFN_xefgSwapChainGetVersion;
