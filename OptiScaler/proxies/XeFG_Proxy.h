@@ -16,11 +16,12 @@
 #pragma comment(lib, "Version.lib")
 
 // Forward declarations for hooks
-xess_result_t hk_xefgSwapChainTagFrameConstants(xefg_swapchain_handle_t swapChainContext, uint64_t frameId,
-                                                  const xefg_swapchain_frame_constants_t* constants);
-xess_result_t hk_xefgSwapChainD3D12TagFrameResource(xefg_swapchain_handle_t swapChainContext, ID3D12CommandList* pCommandList,
-                                                      uint64_t frameId, const xefg_swapchain_d3d12_resource_data_t* resourceData);
-xess_result_t hk_xefgSwapChainSetPresentId(xefg_swapchain_handle_t swapChainContext, uint64_t presentId);
+xefg_swapchain_result_t hk_xefgSwapChainTagFrameConstants(xefg_swapchain_handle_t swapChainContext, uint32_t presentId,
+                                                           const xefg_swapchain_frame_constant_data_t* pConstants);
+xefg_swapchain_result_t hk_xefgSwapChainD3D12TagFrameResource(xefg_swapchain_handle_t swapChainContext,
+                                                               ID3D12CommandList* pCommandList, uint32_t presentId,
+                                                               const xefg_swapchain_d3d12_resource_data_t* pResData);
+xefg_swapchain_result_t hk_xefgSwapChainSetPresentId(xefg_swapchain_handle_t swapChainContext, uint32_t presentId);
 
 // Common
 typedef decltype(&xefgSwapChainGetVersion) PFN_xefgSwapChainGetVersion;

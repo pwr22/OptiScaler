@@ -9,54 +9,54 @@
 
 #include <magic_enum.hpp>
 
-void XeFG_Inputs_Dx12::CheckForFrame(IFGFeature_Dx12* fg, uint32_t frameId)
+void XeFG_Inputs_Dx12::CheckForFrame(IFGFeature_Dx12* fg, uint32_t presentId)
 {
     std::scoped_lock lock(_frameBoundaryMutex);
 
-    if (_isFrameFinished && _lastFrameId == _currentFrameId && frameId == 0 && frameId != _currentFrameId)
+    if (_isFrameFinished && _lastPresentId == _currentPresentId && presentId == 0 && presentId != _currentPresentId)
     {
-        LOG_DEBUG("1> CheckForFrame: frameId={}, currentFrameId={}, lastFrameId={}, isFrameFinished={}", frameId,
-                  _currentFrameId, _lastFrameId, _isFrameFinished);
+        LOG_DEBUG("1> CheckForFrame: presentId={}, currentPresentId={}, lastPresentId={}, isFrameFinished={}", presentId,
+                  _currentPresentId, _lastPresentId, _isFrameFinished);
 
         _isFrameFinished = false;
 
         fg->StartNewFrame();
         _currentIndex = fg->GetIndex();
 
-        if (frameId != 0)
-            _currentFrameId = frameId;
+        if (presentId != 0)
+            _currentPresentId = presentId;
         else
-            _currentFrameId = _lastFrameId + 1;
+            _currentPresentId = _lastPresentId + 1;
 
-        _frameIdIndex[_currentIndex] = _currentFrameId;
+        _presentIdIndex[_currentIndex] = _currentPresentId;
     }
-    else if (frameId != 0 && frameId > _currentFrameId)
+    else if (presentId != 0 && presentId > _currentPresentId)
     {
-        LOG_DEBUG("2> CheckForFrame: frameId={}, currentFrameId={}, lastFrameId={}, isFrameFinished={}", frameId,
-                  _currentFrameId, _lastFrameId, _isFrameFinished);
+        LOG_DEBUG("2> CheckForFrame: presentId={}, currentPresentId={}, lastPresentId={}, isFrameFinished={}", presentId,
+                  _currentPresentId, _lastPresentId, _isFrameFinished);
 
         _isFrameFinished = false;
-        _lastFrameId = frameId - 1;
+        _lastPresentId = presentId - 1;
 
         fg->StartNewFrame();
         _currentIndex = fg->GetIndex();
-        _currentFrameId = frameId;
-        _frameIdIndex[_currentIndex] = _currentFrameId;
+        _currentPresentId = presentId;
+        _presentIdIndex[_currentIndex] = _currentPresentId;
     }
 }
 
-int XeFG_Inputs_Dx12::IndexForFrameId(uint32_t frameId)
+int XeFG_Inputs_Dx12::IndexForPresentId(uint32_t presentId)
 {
     for (int i = 0; i < BUFFER_COUNT; i++)
     {
-        if (_frameIdIndex[i] == frameId)
+        if (_presentIdIndex[i] == presentId)
             return i;
     }
 
     return -1;
 }
 
-bool XeFG_Inputs_Dx12::TagFrameConstants(void* swapChainContext, uint64_t frameId, void* constants)
+bool XeFG_Inputs_Dx12::TagFrameConstants(void* swapChainContext, uint32_t presentId, void* constants)
 {
     LOG_FUNC();
 
@@ -65,59 +65,50 @@ bool XeFG_Inputs_Dx12::TagFrameConstants(void* swapChainContext, uint64_t frameI
     if (fgOutput == nullptr)
         return true;
 
-    CheckForFrame(fgOutput, frameId);
+    CheckForFrame(fgOutput, presentId);
 
-    auto constData = static_cast<xefg_swapchain_frame_constants_t*>(constants);
+    auto constData = static_cast<const xefg_swapchain_frame_constant_data_t*>(constants);
     if (constData == nullptr)
         return true;
 
     auto config = Config::Instance();
 
-    // Extract and save XeFG configuration flags
-    bool depthInverted = (constData->flags & XEFG_SWAPCHAIN_FRAME_FLAG_DEPTH_INVERTED) != 0;
-    bool jitteredMV = (constData->flags & XEFG_SWAPCHAIN_FRAME_FLAG_JITTERED_MOTION_VECTORS) != 0;
-    bool highResMV = (constData->flags & XEFG_SWAPCHAIN_FRAME_FLAG_HIGH_RES_MOTION_VECTORS) != 0;
-
-    if (config->FGXeFGDepthInverted.value_or_default() != depthInverted ||
-        config->FGXeFGJitteredMV.value_or_default() != jitteredMV ||
-        config->FGXeFGHighResMV.value_or_default() != highResMV)
-    {
-        config->FGXeFGDepthInverted = depthInverted;
-        config->FGXeFGJitteredMV = jitteredMV;
-        config->FGXeFGHighResMV = highResMV;
-        LOG_DEBUG("XeFG DepthInverted: {}", config->FGXeFGDepthInverted.value_or_default());
-        LOG_DEBUG("XeFG JitteredMV: {}", config->FGXeFGJitteredMV.value_or_default());
-        LOG_DEBUG("XeFG HighResMV: {}", config->FGXeFGHighResMV.value_or_default());
-        config->SaveXeFG();
-    }
-
     // Build FG constants
     FG_Constants fgConstants {};
-    fgConstants.displayWidth = constData->output_width;
-    fgConstants.displayHeight = constData->output_height;
+    fgConstants.displayWidth = 0;  // Will be set by output
+    fgConstants.displayHeight = 0; // Will be set by output
 
     fgConstants.flags.reset();
 
-    if (depthInverted)
+    // Note: XeFG API doesn't provide per-frame flags like depth inverted, jittered MVs, etc.
+    // Those are set during swapchain initialization via XEFG_SWAPCHAIN_INIT_FLAG_*
+    // We'll use the saved config values that were set during initialization
+    if (config->FGXeFGDepthInverted.value_or_default())
         fgConstants.flags |= FG_Flags::InvertedDepth;
 
-    if (jitteredMV)
+    if (config->FGXeFGJitteredMV.value_or_default())
         fgConstants.flags |= FG_Flags::JitteredMVs;
 
-    if (highResMV)
+    if (config->FGXeFGHighResMV.value_or_default())
         fgConstants.flags |= FG_Flags::DisplayResolutionMVs;
 
     if (config->FGAsync.value_or_default())
         fgConstants.flags |= FG_Flags::Async;
 
-    // Camera parameters
-    fgConstants.cameraNear = constData->camera_near;
-    fgConstants.cameraFar = constData->camera_far;
-    fgConstants.cameraFovAngleVertical = constData->vertical_fov;
+    // XeFG provides matrices instead of camera parameters
+    // We could extract near/far/FOV from the projection matrix, but for simplicity
+    // we'll leave them as defaults (0) and let the FG output handle it
+    fgConstants.cameraNear = 0.0f;
+    fgConstants.cameraFar = 0.0f;
+    fgConstants.cameraFovAngleVertical = 0.0f;
 
-    // Jitter
-    fgConstants.jitterX = constData->jitter_offset_x;
-    fgConstants.jitterY = constData->jitter_offset_y;
+    // Jitter offsets (note: XeFG uses jitterOffsetX/Y, not jitterX/Y)
+    fgConstants.jitterX = constData->jitterOffsetX;
+    fgConstants.jitterY = constData->jitterOffsetY;
+
+    // Motion vector scale
+    fgConstants.mvScaleX = constData->motionVectorScaleX;
+    fgConstants.mvScaleY = constData->motionVectorScaleY;
 
     fgOutput->EvaluateState(State::Instance().currentD3D12Device, fgConstants);
 
@@ -142,7 +133,7 @@ bool XeFG_Inputs_Dx12::TagFrameConstants(void* swapChainContext, uint64_t frameI
     return true;
 }
 
-bool XeFG_Inputs_Dx12::TagFrameResource(void* swapChainContext, void* cmdList, uint64_t frameId, void* resourceData)
+bool XeFG_Inputs_Dx12::TagFrameResource(void* swapChainContext, void* cmdList, uint32_t presentId, void* resourceData)
 {
     LOG_FUNC();
 
@@ -151,14 +142,14 @@ bool XeFG_Inputs_Dx12::TagFrameResource(void* swapChainContext, void* cmdList, u
     if (fgOutput == nullptr || !fgOutput->IsActive())
         return true;
 
-    auto resData = static_cast<xefg_swapchain_d3d12_resource_data_t*>(resourceData);
-    if (resData == nullptr || resData->resource == nullptr)
+    auto resData = static_cast<const xefg_swapchain_d3d12_resource_data_t*>(resourceData);
+    if (resData == nullptr || resData->pResource == nullptr)
         return true;
 
-    auto index = IndexForFrameId(frameId);
+    auto index = IndexForPresentId(presentId);
     if (index < 0)
     {
-        LOG_WARN("Invalid frame index for frameId: {}", frameId);
+        LOG_WARN("Invalid frame index for presentId: {}", presentId);
         return true;
     }
 
@@ -167,20 +158,20 @@ bool XeFG_Inputs_Dx12::TagFrameResource(void* swapChainContext, void* cmdList, u
     
     switch (resData->type)
     {
-    case XEFG_SWAPCHAIN_RESOURCE_TYPE_COLOR:
-        optiType = FG_ResourceType::Color;
+    case XEFG_SWAPCHAIN_RES_HUDLESS_COLOR:
+        optiType = FG_ResourceType::HudlessColor;
         break;
-    case XEFG_SWAPCHAIN_RESOURCE_TYPE_DEPTH:
+    case XEFG_SWAPCHAIN_RES_DEPTH:
         optiType = FG_ResourceType::Depth;
         break;
-    case XEFG_SWAPCHAIN_RESOURCE_TYPE_MOTION_VECTORS:
+    case XEFG_SWAPCHAIN_RES_MOTION_VECTOR:
         optiType = FG_ResourceType::Velocity;
         break;
-    case XEFG_SWAPCHAIN_RESOURCE_TYPE_UI:
+    case XEFG_SWAPCHAIN_RES_UI:
         optiType = FG_ResourceType::UIColor;
         break;
-    case XEFG_SWAPCHAIN_RESOURCE_TYPE_HUD_LESS:
-        optiType = FG_ResourceType::HudlessColor;
+    case XEFG_SWAPCHAIN_RES_BACKBUFFER:
+        optiType = FG_ResourceType::Color;
         break;
     default:
         LOG_WARN("Unknown XeFG resource type: {}", resData->type);
@@ -189,14 +180,14 @@ bool XeFG_Inputs_Dx12::TagFrameResource(void* swapChainContext, void* cmdList, u
 
     // Create Dx12Resource wrapper
     Dx12Resource dx12Res {};
-    dx12Res.resource = resData->resource;
-    dx12Res.state = resData->state;
+    dx12Res.resource = resData->pResource;
+    dx12Res.state = resData->incomingState;
     dx12Res.cmdList = static_cast<ID3D12GraphicsCommandList*>(cmdList);
     dx12Res.type = optiType;
     dx12Res.validity = FG_ResourceValidity::ValidNow;
     dx12Res.frameIndex = index;
 
-    LOG_DEBUG("TagFrameResource: frameId={}, type={}, index={}", frameId, magic_enum::enum_name(optiType), index);
+    LOG_DEBUG("TagFrameResource: presentId={}, type={}, index={}", presentId, magic_enum::enum_name(optiType), index);
 
     // Set the resource on the FG output
     fgOutput->SetResource(&dx12Res);
@@ -204,10 +195,10 @@ bool XeFG_Inputs_Dx12::TagFrameResource(void* swapChainContext, void* cmdList, u
     return true;
 }
 
-void XeFG_Inputs_Dx12::MarkPresent(uint64_t frameId)
+void XeFG_Inputs_Dx12::MarkPresent(uint32_t presentId)
 {
     std::scoped_lock lock(_frameBoundaryMutex);
     
     _isFrameFinished = true;
-    _lastFrameId = frameId;
+    _lastPresentId = presentId;
 }

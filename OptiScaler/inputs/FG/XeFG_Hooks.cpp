@@ -11,47 +11,49 @@ static PFN_xefgSwapChainTagFrameConstants o_xefgSwapChainTagFrameConstants = nul
 static PFN_xefgSwapChainD3D12TagFrameResource o_xefgSwapChainD3D12TagFrameResource = nullptr;
 static PFN_xefgSwapChainSetPresentId o_xefgSwapChainSetPresentId = nullptr;
 
-xess_result_t hk_xefgSwapChainTagFrameConstants(xefg_swapchain_handle_t swapChainContext, uint64_t frameId,
-                                                  const xefg_swapchain_frame_constants_t* constants)
+xefg_swapchain_result_t hk_xefgSwapChainTagFrameConstants(xefg_swapchain_handle_t swapChainContext, uint32_t presentId,
+                                                           const xefg_swapchain_frame_constant_data_t* pConstants)
 {
     LOG_FUNC();
 
     // If XeFG is the active input, intercept and redirect
-    if (State::Instance().activeFgInput == FGInput::XeFG && constants != nullptr)
+    if (State::Instance().activeFgInput == FGInput::XeFG && pConstants != nullptr)
     {
         // Make a mutable copy since we need to pass non-const pointer to our handler
-        xefg_swapchain_frame_constants_t constCopy = *constants;
-        XeFG_Inputs_Dx12::TagFrameConstants(swapChainContext, frameId, &constCopy);
+        xefg_swapchain_frame_constant_data_t constCopy = *pConstants;
+        XeFG_Inputs_Dx12::TagFrameConstants(swapChainContext, presentId, &constCopy);
     }
 
     // Call original if it exists (for passthrough or when XeFG is also the output)
     if (o_xefgSwapChainTagFrameConstants != nullptr)
-        return o_xefgSwapChainTagFrameConstants(swapChainContext, frameId, constants);
+        return o_xefgSwapChainTagFrameConstants(swapChainContext, presentId, pConstants);
 
-    return XESS_RESULT_SUCCESS;
+    return XEFG_SWAPCHAIN_RESULT_SUCCESS;
 }
 
-xess_result_t hk_xefgSwapChainD3D12TagFrameResource(xefg_swapchain_handle_t swapChainContext, ID3D12CommandList* pCommandList,
-                                                      uint64_t frameId, const xefg_swapchain_d3d12_resource_data_t* resourceData)
+xefg_swapchain_result_t hk_xefgSwapChainD3D12TagFrameResource(xefg_swapchain_handle_t swapChainContext,
+                                                               ID3D12CommandList* pCommandList,
+                                                               uint32_t presentId,
+                                                               const xefg_swapchain_d3d12_resource_data_t* pResData)
 {
     LOG_FUNC();
 
     // If XeFG is the active input, intercept and redirect
-    if (State::Instance().activeFgInput == FGInput::XeFG && resourceData != nullptr)
+    if (State::Instance().activeFgInput == FGInput::XeFG && pResData != nullptr)
     {
         // Make a mutable copy
-        xefg_swapchain_d3d12_resource_data_t resCopy = *resourceData;
-        XeFG_Inputs_Dx12::TagFrameResource(swapChainContext, pCommandList, frameId, &resCopy);
+        xefg_swapchain_d3d12_resource_data_t resCopy = *pResData;
+        XeFG_Inputs_Dx12::TagFrameResource(swapChainContext, pCommandList, presentId, &resCopy);
     }
 
     // Call original if it exists
     if (o_xefgSwapChainD3D12TagFrameResource != nullptr)
-        return o_xefgSwapChainD3D12TagFrameResource(swapChainContext, pCommandList, frameId, resourceData);
+        return o_xefgSwapChainD3D12TagFrameResource(swapChainContext, pCommandList, presentId, pResData);
 
-    return XESS_RESULT_SUCCESS;
+    return XEFG_SWAPCHAIN_RESULT_SUCCESS;
 }
 
-xess_result_t hk_xefgSwapChainSetPresentId(xefg_swapchain_handle_t swapChainContext, uint64_t presentId)
+xefg_swapchain_result_t hk_xefgSwapChainSetPresentId(xefg_swapchain_handle_t swapChainContext, uint32_t presentId)
 {
     LOG_FUNC();
 
@@ -65,7 +67,7 @@ xess_result_t hk_xefgSwapChainSetPresentId(xefg_swapchain_handle_t swapChainCont
     if (o_xefgSwapChainSetPresentId != nullptr)
         return o_xefgSwapChainSetPresentId(swapChainContext, presentId);
 
-    return XESS_RESULT_SUCCESS;
+    return XEFG_SWAPCHAIN_RESULT_SUCCESS;
 }
 
 namespace XeFGHooks
